@@ -34,15 +34,23 @@ export class DependencyGraphComponent implements OnInit {
   loading = signal<boolean>(true);
   error = signal<string>('');
   showLegend = signal<boolean>(true);
+  showStats = signal<boolean>(true);
   zoomLevel = signal<number>(100);
   selectedNode = signal<D3Node | null>(null);
+  hoveredNode = signal<D3Node | null>(null);
+  
+  // Statistics
+  totalModules = signal<number>(0);
+  totalConnections = signal<number>(0);
+  criticalModules = signal<number>(0);
   
   private svg: any;
   private simulation: any;
   private g: any;
   private zoom: any;
-  private width = 1200;
-  private height = 700;
+  private width = 1400;
+  private height = 750;
+  private nodeRadius = 35; // Increased from 20
 
   constructor(private dependencyService: DependencyService) {}
 
@@ -53,6 +61,10 @@ export class DependencyGraphComponent implements OnInit {
   loadDependencyGraph(): void {
     this.dependencyService.getDependencyGraph().subscribe({
       next: (graph) => {
+        this.totalModules.set(graph.nodes.length);
+        this.totalConnections.set(graph.links.length);
+        this.criticalModules.set(graph.nodes.filter((n: any) => n.criticality === 'CRITICAL').length);
+        
         setTimeout(() => this.createDependencyGraph(graph), 100);
         this.loading.set(false);
       },
@@ -74,6 +86,16 @@ export class DependencyGraphComponent implements OnInit {
       .attr('height', this.height)
       .attr('class', 'graph-svg');
 
+    // Add defs for gradients and filters
+    const defs = this.svg.append('defs');
+
+    // Add drop shadow filter
+    defs.append('filter')
+      .attr('id', 'drop-shadow')
+      .append('feGaussianBlur')
+      .attr('in', 'SourceGraphic')
+      .attr('stdDeviation', 3);
+
     // Add zoom behavior
     this.zoom = d3.zoom()
       .scaleExtent([0.5, 3])
@@ -87,15 +109,21 @@ export class DependencyGraphComponent implements OnInit {
     // Group for transformations
     this.g = this.svg.append('g');
 
-    // Create force simulation
+    // Create force simulation with better physics
     this.simulation = d3.forceSimulation(data.nodes as D3Node[])
       .force('link', d3.forceLink(data.links as D3Link[])
         .id((d: any) => d.id)
-        .distance(150)
-        .strength(0.5))
-      .force('charge', d3.forceManyBody().strength(-800))
+        .distance((d: any) => {
+          // Longer distance for critical nodes
+          return d.source.criticality === 'CRITICAL' ? 200 : 150;
+        })
+        .strength(0.4))
+      .force('charge', d3.forceManyBody().strength(-1000))
       .force('center', d3.forceCenter(this.width / 2, this.height / 2))
-      .force('collide', d3.forceCollide().radius(50));
+      .force('collide', d3.forceCollide().radius(() => this.nodeRadius + 10))
+      .alpha(1)
+      .alphaDecay(0.025)
+      .velocityDecay(0.3);
 
     // Draw links first (so they appear behind nodes)
     const link = this.g.append('g')
@@ -106,7 +134,8 @@ export class DependencyGraphComponent implements OnInit {
       .attr('class', 'link')
       .attr('stroke', (d: any) => this.getLinkColor(d.criticality))
       .attr('stroke-width', (d: any) => this.getLinkWidth(d.criticality))
-      .attr('opacity', 0.6);
+      .attr('opacity', 0.7)
+      .attr('stroke-linecap', 'round');
 
     // Add link labels (dependency type)
     const linkLabels = this.g.append('g')
@@ -115,53 +144,73 @@ export class DependencyGraphComponent implements OnInit {
       .enter()
       .append('text')
       .attr('class', 'link-label')
-      .attr('font-size', 11)
+      .attr('font-size', 12)
       .attr('fill', '#666')
       .attr('text-anchor', 'middle')
+      .attr('background', 'white')
+      .attr('dy', -5)
       .text((d: any) => d.type);
 
-    // Draw nodes
+    // Draw nodes with improved sizing and styling
     const node = this.g.append('g')
       .selectAll('circle')
       .data(data.nodes)
       .enter()
       .append('circle')
       .attr('class', 'node')
-      .attr('r', 20)
+      .attr('r', this.nodeRadius)
       .attr('fill', (d: any) => this.getNodeColor(d.criticality))
       .attr('stroke', '#fff')
-      .attr('stroke-width', 3)
+      .attr('stroke-width', 4)
+      .attr('filter', 'url(#drop-shadow)')
+      .style('cursor', 'pointer')
       .call(this.drag(this.simulation))
       .on('click', (event: any, d: any) => {
+        event.stopPropagation();
         this.selectedNode.set(d);
       })
       .on('mouseover', (event: any, d: any) => {
         this.onNodeHover(d, data.nodes);
+        this.hoveredNode.set(d);
       })
       .on('mouseout', () => {
         this.onNodeHoverOut(node);
+        this.hoveredNode.set(null);
       });
 
-    // Add labels
-    const labels = this.g.append('g')
-      .selectAll('text')
-      .data(data.nodes)
-      .enter()
-      .append('text')
-      .attr('class', 'node-label')
-      .attr('text-anchor', 'middle')
-      .attr('dy', '.35em')
-      .attr('font-size', 12)
-      .attr('font-weight', 600)
-      .attr('fill', '#fff')
-      .attr('pointer-events', 'none')
-      .text((d: any) => d.name.substring(0, 15));
-
-    // Add titles (tooltips)
+    // Add tooltips for nodes
     node.append('title')
-      .text((d: any) => `${d.name}\n${d.criticality}\n${d.techStack}`);
+      .text((d: any) => {
+        return `${d.name}\nCriticality: ${d.criticality}\nTech: ${d.techStack}`;
+      });
 
-    // Update positions on tick
+    // Add labels with better text handling
+    // Add labels - Simple version without wrapping
+const labels = this.g.append('g')
+  .selectAll('text')
+  .data(data.nodes)
+  .enter()
+  .append('text')
+  .attr('class', 'node-label')
+  .attr('text-anchor', 'middle')
+  .attr('dy', '.35em')
+  .attr('font-size', 13)
+  .attr('font-weight', 700)
+  .attr('fill', '#fff')
+  .attr('pointer-events', 'none')
+  .attr('paint-order', 'stroke')
+  .attr('stroke', '#333')
+  .attr('stroke-width', 3)
+  .text((d: any) => {
+    // Simple truncation
+    if (d.name.length <= 10) {
+      return d.name;
+    }
+    return d.name.substring(0, 9) + '…';
+  });
+
+
+    // Update on each tick
     this.simulation.on('tick', () => {
       link
         .attr('x1', (d: any) => d.source.x)
@@ -174,14 +223,21 @@ export class DependencyGraphComponent implements OnInit {
         .attr('y', (d: any) => (d.source.y + d.target.y) / 2);
 
       node
-        .attr('cx', (d: any) => d.x = Math.max(25, Math.min(this.width - 25, d.x)))
-        .attr('cy', (d: any) => d.y = Math.max(25, Math.min(this.height - 25, d.y)));
+        .attr('cx', (d: any) => {
+          d.x = Math.max(this.nodeRadius + 5, Math.min(this.width - this.nodeRadius - 5, d.x));
+          return d.x;
+        })
+        .attr('cy', (d: any) => {
+          d.y = Math.max(this.nodeRadius + 5, Math.min(this.height - this.nodeRadius - 5, d.y));
+          return d.y;
+        });
 
       labels
         .attr('x', (d: any) => d.x)
         .attr('y', (d: any) => d.y);
     });
   }
+
 
   private getNodeColor(criticality: string): string {
     switch (criticality) {
@@ -206,10 +262,10 @@ export class DependencyGraphComponent implements OnInit {
   }
 
   private getLinkWidth(criticality: number): number {
-    if (criticality >= 80) return 3;
-    if (criticality >= 60) return 2.5;
-    if (criticality >= 40) return 2;
-    return 1.5;
+    if (criticality >= 80) return 4;
+    if (criticality >= 60) return 3;
+    if (criticality >= 40) return 2.5;
+    return 2;
   }
 
   private drag(simulation: any) {
@@ -237,27 +293,27 @@ export class DependencyGraphComponent implements OnInit {
   }
 
   private onNodeHover(hoveredNode: D3Node, allNodes: D3Node[]): void {
-    // Dim non-connected nodes
+    // Highlight connected nodes
     d3.selectAll('.node')
-      .attr('opacity', (d: any) => {
-        return d.id === hoveredNode.id ? 1 : 0.3;
+      .style('opacity', (d: any) => {
+        return d.id === hoveredNode.id ? 1 : 0.4;
       });
 
     d3.selectAll('.node-label')
-      .attr('opacity', (d: any) => {
-        return d.id === hoveredNode.id ? 1 : 0.3;
+      .style('opacity', (d: any) => {
+        return d.id === hoveredNode.id ? 1 : 0.4;
       });
 
     d3.selectAll('.link')
-      .attr('opacity', (d: any) => {
-        return (d.source.id === hoveredNode.id || d.target.id === hoveredNode.id) ? 0.8 : 0.1;
+      .style('opacity', (d: any) => {
+        return (d.source.id === hoveredNode.id || d.target.id === hoveredNode.id) ? 0.9 : 0.2;
       });
   }
 
   private onNodeHoverOut(node: any): void {
-    d3.selectAll('.node').attr('opacity', 1);
-    d3.selectAll('.node-label').attr('opacity', 1);
-    d3.selectAll('.link').attr('opacity', 0.6);
+    d3.selectAll('.node').style('opacity', 1);
+    d3.selectAll('.node-label').style('opacity', 1);
+    d3.selectAll('.link').style('opacity', 0.7);
   }
 
   resetZoom(): void {
@@ -272,13 +328,11 @@ export class DependencyGraphComponent implements OnInit {
     this.showLegend.set(!this.showLegend());
   }
 
-  getNodeStats(criticality: string): string {
-    const counts: any = {
-      'CRITICAL': 0,
-      'HIGH': 0,
-      'MEDIUM': 0,
-      'LOW': 0
-    };
-    return counts[criticality] || 0;
+  toggleStats(): void {
+    this.showStats.set(!this.showStats());
+  }
+
+  deselectNode(): void {
+    this.selectedNode.set(null);
   }
 }
