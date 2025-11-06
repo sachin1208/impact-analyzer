@@ -1,0 +1,159 @@
+<div class="analyze-wrapper">
+  <!-- Navigation Bar -->
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <h1>Impact Analyzer</h1>
+    </div>
+    <div class="navbar-right">
+      <a href="/dashboard" class="btn btn-nav">← Back to Dashboard</a>
+    </div>
+  </nav>
+
+  <!-- Main Container -->
+  <div class="analyze-container">
+    <div class="page-header">
+      <h2>Code Change Impact Analysis</h2>
+      <p>Analyze the potential impact of your code changes on dependent modules</p>
+    </div>
+
+    <!-- Loading State -->
+    <div *ngIf="loadingModules()" class="loading-spinner">
+      <div class="spinner"></div>
+      <p>Loading modules...</p>
+    </div>
+
+    <!-- Error Alert -->
+    <div *ngIf="error() && !loadingModules()" class="alert alert-danger">
+      <span class="alert-icon">⚠️</span>
+      {{ error() }}
+    </div>
+
+    <!-- Analyze Form -->
+    <form [formGroup]="analyzeForm" (ngSubmit)="onSubmit()" *ngIf="!loadingModules()" class="analyze-form">
+      <div class="form-card">
+        <h3>Analysis Details</h3>
+
+        <!-- Module Selection -->
+        <div class="form-group">
+          <label for="moduleId" class="form-label">
+            Select Module <span class="required">*</span>
+          </label>
+          <select 
+            id="moduleId" 
+            formControlName="moduleId" 
+            class="form-control"
+            [class.is-invalid]="submitted() && f['moduleId'].errors">
+            <option value="" disabled>-- Select a module --</option>
+            <option *ngFor="let module of modules()" [value]="module.id">
+              {{ module.moduleName }} 
+              <span *ngIf="module.criticalityLevel">({{ module.criticalityLevel }})</span>
+            </option>
+          </select>
+          <div *ngIf="submitted() && f['moduleId'].errors" class="error-message">
+            <span *ngIf="f['moduleId'].errors['required']">Please select a module</span>
+          </div>
+          
+          <!-- Module Info Card -->
+          <div *ngIf="getSelectedModuleInfo()" class="module-info">
+            <div class="info-item">
+              <span class="label">Tech Stack:</span>
+              <span class="value">{{ getSelectedModuleInfo().techStack }}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">Description:</span>
+              <span class="value">{{ getSelectedModuleInfo().description }}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">Criticality:</span>
+              <span 
+                class="criticality-badge"
+                [ngClass]="'criticality-' + getSelectedModuleInfo().criticalityLevel?.toLowerCase()">
+                {{ getSelectedModuleInfo().criticalityLevel }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Change Description -->
+        <div class="form-group">
+          <label for="changeDescription" class="form-label">
+            Change Description <span class="required">*</span>
+          </label>
+          <textarea 
+            id="changeDescription"
+            formControlName="changeDescription" 
+            class="form-control textarea"
+            [class.is-invalid]="submitted() && f['changeDescription'].errors"
+            rows="6"
+            placeholder="Describe the change in detail. What are you modifying? Why? Any breaking changes?"></textarea>
+          <div class="char-count">{{ f['changeDescription'].value?.length || 0 }}/500</div>
+          <div *ngIf="submitted() && f['changeDescription'].errors" class="error-message">
+            <span *ngIf="f['changeDescription'].errors['required']">Change description is required</span>
+            <span *ngIf="f['changeDescription'].errors['minlength']">
+              Description must be at least 10 characters
+            </span>
+          </div>
+        </div>
+
+        <!-- Change Type -->
+        <div class="form-group">
+          <label for="changeType" class="form-label">
+            Change Type <span class="required">*</span>
+          </label>
+          <select id="changeType" formControlName="changeType" class="form-control">
+            <option *ngFor="let type of changeTypes" [value]="type.value">
+              {{ type.label }}
+            </option>
+          </select>
+        </div>
+
+        <!-- Help Text -->
+        <div class="help-box">
+          <h4>💡 Change Type Guide:</h4>
+          <ul>
+            <li><strong>Bug Fix:</strong> Fixing existing issues or bugs</li>
+            <li><strong>Feature Enhancement:</strong> Adding new functionality</li>
+            <li><strong>Refactoring:</strong> Improving code without changing behavior</li>
+            <li><strong>Data Model Change:</strong> Modifying data structures or schemas</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="form-actions">
+        <button 
+          type="submit" 
+          class="btn btn-primary"
+          [disabled]="!isFormValid()">
+          <span *ngIf="!isAnalyzing()">🔍 Analyze Impact</span>
+          <span *ngIf="isAnalyzing()">
+            <span class="spinner-small"></span> Analyzing...
+          </span>
+        </button>
+        <button 
+          type="button" 
+          class="btn btn-secondary"
+          (click)="resetForm()"
+          [disabled]="isAnalyzing()">
+          Clear Form
+        </button>
+      </div>
+    </form>
+
+    <!-- Info Box -->
+    <div class="info-box">
+      <h3>ℹ️ What is Impact Analysis?</h3>
+      <p>
+        Impact analysis helps you understand how a code change might affect other modules 
+        in your system. It:
+      </p>
+      <ul>
+        <li>Identifies all modules that depend on or are depended by the changed module</li>
+        <li>Calculates risk scores based on module criticality and relationships</li>
+        <li>Detects cascade effects (chain reactions) through dependencies</li>
+        <li>Recommends testing strategies and effort estimates</li>
+        <li>Generates test plans for affected modules</li>
+      </ul>
+    </div>
+  </div>
+</div>

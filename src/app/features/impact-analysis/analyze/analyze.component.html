@@ -1,0 +1,318 @@
+<div class="analyze-wrapper">
+  <!-- Beautiful Header with Gradient -->
+  <div class="page-hero">
+    <div class="hero-content">
+      <a href="/dashboard" class="back-link">
+        <span class="back-arrow">←</span> Dashboard
+      </a>
+      <h1 class="hero-title">
+        <span class="icon">🔍</span>
+        Code Change Impact Analysis
+      </h1>
+      <p class="hero-subtitle">
+        Predict and analyze the ripple effects of your code changes
+      </p>
+    </div>
+    <div class="hero-decoration">
+      <div class="decoration-circle circle-1"></div>
+      <div class="decoration-circle circle-2"></div>
+      <div class="decoration-circle circle-3"></div>
+    </div>
+  </div>
+
+  <div class="analyze-container">
+    <!-- Progress Steps Indicator -->
+    <div class="progress-steps">
+      <div class="step" [class.active]="true" [class.completed]="f['moduleId'].value">
+        <div class="step-number">1</div>
+        <div class="step-label">Select Module</div>
+      </div>
+      <div class="step-line" [class.active]="f['moduleId'].value"></div>
+      <div class="step" [class.active]="f['moduleId'].value" [class.completed]="f['changeDescription'].value?.length >= 10">
+        <div class="step-number">2</div>
+        <div class="step-label">Describe Change</div>
+      </div>
+      <div class="step-line" [class.active]="f['changeDescription'].value?.length >= 10"></div>
+      <div class="step" [class.active]="f['changeDescription'].value?.length >= 10" [class.completed]="analyzeForm.valid">
+        <div class="step-number">3</div>
+        <div class="step-label">Analyze</div>
+      </div>
+    </div>
+
+    <!-- Loading State with Animation -->
+    <div *ngIf="loadingModules()" class="loading-card">
+      <div class="loading-content">
+        <div class="loader">
+          <div class="loader-circle"></div>
+          <div class="loader-circle"></div>
+          <div class="loader-circle"></div>
+        </div>
+        <h3>Loading Modules...</h3>
+        <p>Please wait while we fetch available modules</p>
+      </div>
+    </div>
+
+    <!-- Error Alert with Icon -->
+    <div *ngIf="error() && !loadingModules()" class="alert-card error">
+      <div class="alert-icon">⚠️</div>
+      <div class="alert-content">
+        <h3>Oops! Something went wrong</h3>
+        <p>{{ error() }}</p>
+      </div>
+      <button class="alert-close" (click)="error.set('')">×</button>
+    </div>
+
+    <!-- Main Form -->
+    <form [formGroup]="analyzeForm" (ngSubmit)="onSubmit()" *ngIf="!loadingModules()">
+      <!-- Step 1: Module Selection -->
+      <div class="form-section" [class.active]="true">
+        <div class="section-header">
+          <span class="section-number">01</span>
+          <h2>Select Target Module</h2>
+        </div>
+        
+        <div class="card interactive-card">
+          <div class="form-group">
+            <label for="moduleId" class="label-with-icon">
+              <span class="icon">📦</span>
+              <span>Choose the module you want to modify</span>
+              <span class="required-badge">Required</span>
+            </label>
+            
+            <div class="select-wrapper">
+              <select 
+                id="moduleId" 
+                formControlName="moduleId" 
+                class="form-control select-enhanced"
+                [class.is-invalid]="submitted() && f['moduleId'].errors"
+                [class.has-value]="f['moduleId'].value">
+                <option value="" disabled>🔽 Select a module from the list</option>
+                <option *ngFor="let module of modules()" [value]="module.id">
+                  {{ module.moduleName }} 
+                  <span class="module-badge">{{ module.criticalityLevel }}</span>
+                </option>
+              </select>
+              <div class="select-icon">▼</div>
+            </div>
+            
+            <div *ngIf="submitted() && f['moduleId'].errors" class="error-message slide-down">
+              <span class="error-icon">❌</span>
+              Please select a module to continue
+            </div>
+            
+            <!-- Module Details Card (Animated) -->
+            <div *ngIf="getSelectedModuleInfo()" class="module-details-card fade-in">
+              <div class="details-header">
+                <span class="details-icon">ℹ️</span>
+                <h3>Module Information</h3>
+              </div>
+              
+              <div class="details-grid">
+                <div class="detail-item">
+                  <span class="detail-label">📚 Tech Stack</span>
+                  <span class="detail-value">{{ getSelectedModuleInfo().techStack }}</span>
+                </div>
+                
+                <div class="detail-item">
+                  <span class="detail-label">📝 Description</span>
+                  <span class="detail-value">{{ getSelectedModuleInfo().description }}</span>
+                </div>
+                
+                <div class="detail-item">
+                  <span class="detail-label">⚡ Version</span>
+                  <span class="detail-value">{{ getSelectedModuleInfo().version || 'N/A' }}</span>
+                </div>
+                
+                <div class="detail-item">
+                  <span class="detail-label">🎯 Criticality</span>
+                  <span 
+                    class="criticality-pill"
+                    [ngClass]="'criticality-' + getSelectedModuleInfo().criticalityLevel?.toLowerCase()">
+                    {{ getSelectedModuleInfo().criticalityLevel }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2: Change Description -->
+      <div class="form-section" [class.active]="f['moduleId'].value">
+        <div class="section-header">
+          <span class="section-number">02</span>
+          <h2>Describe Your Change</h2>
+        </div>
+        
+        <div class="card interactive-card">
+          <div class="form-group">
+            <label for="changeDescription" class="label-with-icon">
+              <span class="icon">✏️</span>
+              <span>What changes are you planning to make?</span>
+              <span class="required-badge">Required</span>
+            </label>
+            
+            <div class="textarea-wrapper">
+              <textarea 
+                id="changeDescription"
+                formControlName="changeDescription" 
+                class="form-control textarea-enhanced"
+                [class.is-invalid]="submitted() && f['changeDescription'].errors"
+                rows="6"
+                placeholder="Example: Refactoring the authentication flow to use OAuth 2.0. This will replace the current username/password authentication with token-based authentication. Expected to impact login, session management, and user profile modules."
+                maxlength="500"></textarea>
+              
+              <div class="char-counter" [class.warning]="f['changeDescription'].value?.length > 450">
+                <span class="counter-icon">📊</span>
+                {{ f['changeDescription'].value?.length || 0 }}/500 characters
+                <span *ngIf="f['changeDescription'].value?.length >= 10" class="check-icon">✓</span>
+              </div>
+            </div>
+            
+            <div *ngIf="submitted() && f['changeDescription'].errors" class="error-message slide-down">
+              <span class="error-icon">❌</span>
+              <span *ngIf="f['changeDescription'].errors['required']">
+                Please describe your change
+              </span>
+              <span *ngIf="f['changeDescription'].errors['minlength']">
+                Description must be at least 10 characters (current: {{ f['changeDescription'].value?.length || 0 }})
+              </span>
+            </div>
+
+            <!-- AI Suggestions Box (Optional Enhancement) -->
+            <div class="suggestions-box" *ngIf="f['changeDescription'].value?.length > 20">
+              <div class="suggestion-header">
+                <span class="icon">💡</span>
+                <span>Tips for better analysis:</span>
+              </div>
+              <ul class="suggestion-list">
+                <li>Mention specific functions or APIs being modified</li>
+                <li>Note any breaking changes</li>
+                <li>Include database schema changes if any</li>
+                <li>List external dependencies affected</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3: Change Type -->
+      <div class="form-section" [class.active]="f['changeDescription'].value?.length >= 10">
+        <div class="section-header">
+          <span class="section-number">03</span>
+          <h2>Categorize the Change</h2>
+        </div>
+        
+        <div class="card interactive-card">
+          <div class="form-group">
+            <label class="label-with-icon">
+              <span class="icon">🏷️</span>
+              <span>What type of change is this?</span>
+            </label>
+            
+            <div class="change-types-grid">
+              <label 
+                *ngFor="let type of changeTypes" 
+                class="change-type-card"
+                [class.selected]="f['changeType'].value === type.value">
+                <input 
+                  type="radio" 
+                  formControlName="changeType" 
+                  [value]="type.value"
+                  class="radio-hidden">
+                <div class="card-content">
+                  <div class="card-icon">{{ type.icon }}</div>
+                  <div class="card-title">{{ type.label }}</div>
+                  <div class="card-description">{{ type.description }}</div>
+                </div>
+                <div class="card-check">✓</div>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="action-section">
+        <div class="action-buttons">
+          <button 
+            type="button" 
+            class="btn btn-secondary"
+            (click)="resetForm()"
+            [disabled]="isAnalyzing()">
+            <span class="btn-icon">🔄</span>
+            <span>Reset Form</span>
+          </button>
+          
+          <button 
+            type="submit" 
+            class="btn btn-primary"
+            [disabled]="!isFormValid()"
+            [class.loading]="isAnalyzing()">
+            <span *ngIf="!isAnalyzing()" class="btn-content">
+              <span class="btn-icon">🚀</span>
+              <span>Analyze Impact</span>
+            </span>
+            <span *ngIf="isAnalyzing()" class="btn-content">
+              <span class="spinner"></span>
+              <span>Analyzing...</span>
+            </span>
+          </button>
+        </div>
+        
+        <div class="form-hints">
+          <div class="hint-item" *ngIf="!analyzeForm.valid">
+            <span class="hint-icon">💡</span>
+            Complete all required fields to proceed
+          </div>
+          <div class="hint-item success" *ngIf="analyzeForm.valid && !isAnalyzing()">
+            <span class="hint-icon">✅</span>
+            Ready to analyze! Click the button above
+          </div>
+        </div>
+      </div>
+    </form>
+
+    <!-- Info Section -->
+    <div class="info-section">
+      <div class="info-card">
+        <div class="info-header">
+          <span class="info-icon">💡</span>
+          <h3>How Impact Analysis Works</h3>
+        </div>
+        <div class="info-content">
+          <div class="info-steps">
+            <div class="info-step">
+              <div class="step-icon">1️⃣</div>
+              <div class="step-text">
+                <strong>Dependency Mapping</strong>
+                <p>Identifies all modules connected to your change</p>
+              </div>
+            </div>
+            <div class="info-step">
+              <div class="step-icon">2️⃣</div>
+              <div class="step-text">
+                <strong>Risk Assessment</strong>
+                <p>Calculates risk scores based on criticality</p>
+              </div>
+            </div>
+            <div class="info-step">
+              <div class="step-icon">3️⃣</div>
+              <div class="step-text">
+                <strong>Cascade Detection</strong>
+                <p>Traces ripple effects through dependency chains</p>
+              </div>
+            </div>
+            <div class="info-step">
+              <div class="step-icon">4️⃣</div>
+              <div class="step-text">
+                <strong>Test Planning</strong>
+                <p>Generates recommended test cases and estimates</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

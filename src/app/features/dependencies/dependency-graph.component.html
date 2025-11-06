@@ -1,0 +1,130 @@
+<div class="graph-wrapper">
+  <!-- Navigation Bar -->
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <h1>Impact Analyzer</h1>
+    </div>
+    <div class="navbar-right">
+      <a href="/dashboard" class="btn btn-nav">← Back to Dashboard</a>
+    </div>
+  </nav>
+
+  <!-- Main Container -->
+  <div class="graph-container">
+    <!-- Header -->
+    <div class="graph-header">
+      <h2>Module Dependency Graph</h2>
+      <p>Interactive visualization of module dependencies and relationships</p>
+    </div>
+
+    <!-- Loading State -->
+    <div *ngIf="loading()" class="loading-state">
+      <div class="spinner"></div>
+      <p>Loading dependency graph...</p>
+    </div>
+
+    <!-- Error State -->
+    <div *ngIf="error() && !loading()" class="alert alert-danger">
+      <span>⚠️</span>
+      {{ error() }}
+      <button class="btn-retry" (click)="loadDependencyGraph()">Retry</button>
+    </div>
+
+    <!-- Graph Section -->
+    <div *ngIf="!loading() && !error()" class="graph-section">
+      <!-- Controls -->
+      <div class="graph-controls">
+        <div class="control-group">
+          <span class="label">Zoom:</span>
+          <span class="zoom-value">{{ zoomLevel() }}%</span>
+          <button class="btn btn-small" (click)="resetZoom()">
+            🔄 Reset View
+          </button>
+        </div>
+        <div class="control-group">
+          <button 
+            class="btn btn-small"
+            (click)="toggleLegend()"
+            [class.active]="showLegend()">
+            📋 {{ showLegend() ? 'Hide' : 'Show' }} Legend
+          </button>
+        </div>
+      </div>
+
+      <!-- Graph Canvas -->
+      <div class="graph-canvas-wrapper">
+        <div #graphContainer class="graph-canvas"></div>
+      </div>
+
+      <!-- Legend -->
+      <div class="legend" *ngIf="showLegend()">
+        <h3>Legend</h3>
+        <div class="legend-items">
+          <div class="legend-item">
+            <span class="legend-node critical"></span>
+            <span class="label">Critical Module</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-node high"></span>
+            <span class="label">High Priority</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-node medium"></span>
+            <span class="label">Medium Priority</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-node low"></span>
+            <span class="label">Low Priority</span>
+          </div>
+        </div>
+        <div class="legend-section">
+          <h4>Dependency Links</h4>
+          <p class="info-text">
+            🎯 Line thickness indicates criticality of the dependency (thicker = more critical)
+          </p>
+        </div>
+        <div class="legend-section">
+          <h4>Interaction Tips</h4>
+          <ul>
+            <li>🖱️ Drag nodes to rearrange</li>
+            <li>🔍 Scroll to zoom in/out</li>
+            <li>👆 Click a node to select it</li>
+            <li>⏸️ Hover over nodes to highlight connections</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Selected Node Info -->
+      <div class="node-info" *ngIf="selectedNode()">
+        <div class="info-card">
+          <h3>{{ selectedNode()?.name }}</h3>
+          <div class="info-row">
+            <span class="label">Criticality:</span>
+            <span 
+              class="criticality-badge"
+              [ngClass]="'criticality-' + selectedNode()?.criticality?.toLowerCase()">
+              {{ selectedNode()?.criticality }}
+            </span>
+          </div>
+          <div class="info-row">
+            <span class="label">Tech Stack:</span>
+            <span class="value">{{ selectedNode()?.techStack }}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Node ID:</span>
+            <span class="value">#{{ selectedNode()?.id }}</span>
+          </div>
+          <button class="btn btn-close" (click)="selectedNode.set(null)">✕</button>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="graph-stats">
+        <div class="stat-item">
+          <h4>Graph Statistics</h4>
+          <p>Hover over nodes to see connected modules. Drag to rearrange. Scroll to zoom.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

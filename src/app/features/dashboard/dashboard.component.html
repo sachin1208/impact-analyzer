@@ -1,0 +1,49 @@
+<div class="dashboard-wrapper">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <h1>Impact Analyzer</h1>
+    </div>
+    <div class="navbar-right">
+      <span class="user-info">{{ currentUser()?.username }}</span>
+      <button (click)="logout()" class="btn btn-logout">Logout</button>
+    </div>
+  </nav>
+
+  <div class="dashboard-container">
+    <h2>Dashboard</h2>
+    
+    <div *ngIf="loading()" class="loading">Loading...</div>
+    <div *ngIf="error()" class="alert alert-danger">{{ error() }}</div>
+
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <h3>Total Modules</h3>
+        <p class="metric-value">{{ totalModules() }}</p>
+      </div>
+
+      <div class="metric-card">
+        <h3>Total Dependencies</h3>
+        <p class="metric-value">{{ totalDependencies() }}</p>
+      </div>
+
+      <div class="metric-card">
+        <h3>Total Analyses</h3>
+        <p class="metric-value">{{ totalAnalyses() }}</p>
+      </div>
+
+      <div class="metric-card critical">
+        <h3>Critical Modules</h3>
+        <p class="metric-value">{{ criticalCount() }}</p>
+      </div>
+    </div>
+
+    <div class="quick-actions">
+      <button (click)="navigateTo('/impact-analysis')" class="btn btn-primary">
+        Analyze Impact
+      </button>
+      <button (click)="navigateTo('/dependencies')" class="btn btn-secondary">
+        View Dependencies
+      </button>
+    </div>
+  </div>
+</div>

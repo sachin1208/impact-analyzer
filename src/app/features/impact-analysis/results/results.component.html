@@ -1,0 +1,77 @@
+<div class="results-container">
+  <button (click)="goBack()" class="btn btn-back">← Back</button>
+
+  <div *ngIf="loading()" class="loading">
+    <p>Loading analysis results...</p>
+  </div>
+
+  <div *ngIf="error()" class="alert alert-danger">
+    {{ error() }}
+  </div>
+
+  <div *ngIf="analysis() && !loading()" class="results-content">
+    <h1>Impact Analysis Results</h1>
+
+    <div class="risk-summary">
+      <div class="risk-score" [style.backgroundColor]="getRiskColor(analysis().riskLevel)">
+        <div class="score">{{ analysis().riskScore }}%</div>
+        <div class="level">{{ analysis().riskLevel }}</div>
+      </div>
+
+      <div class="summary-info">
+        <p><strong>Analysis ID:</strong> {{ analysis().analysisId }}</p>
+        <p><strong>Cascade Depth:</strong> {{ analysis().cascadeDepth }} levels</p>
+        <p><strong>Duration:</strong> {{ analysis().analysisDurationMs }}ms</p>
+      </div>
+    </div>
+
+    <div class="affected-modules">
+      <h2>Affected Modules ({{ analysis().affectedModules.length }})</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Module Name</th>
+            <th>Risk Score</th>
+            <th>Cascade Depth</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let module of analysis().affectedModules">
+            <td>{{ module.moduleName }}</td>
+            <td>
+              <span class="risk-badge" [style.backgroundColor]="getRiskColor(
+                module.riskScore >= 80 ? 'CRITICAL' :
+                module.riskScore >= 60 ? 'HIGH' :
+                module.riskScore >= 40 ? 'MEDIUM' : 'LOW'
+              )">
+                {{ module.riskScore | number: '1.0-0' }}%
+              </span>
+            </td>
+            <td>{{ module.cascadeDepth }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="recommendations">
+      <h2>Recommendations</h2>
+      <ul>
+        <li *ngFor="let rec of analysis().recommendations">{{ rec }}</li>
+      </ul>
+    </div>
+
+    <div class="test-plan" *ngIf="analysis().testPlan">
+      <h2>Generated Test Plan</h2>
+      <div class="test-summary">
+        <div class="test-item">
+          <span>Test Cases:</span>
+          <strong>{{ analysis().testPlan.testCaseCount }}</strong>
+        </div>
+        <div class="test-item">
+          <span>Estimated Effort:</span>
+          <strong>{{ analysis().testPlan.totalEffortHours | number: '1.1-1' }} hours</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
