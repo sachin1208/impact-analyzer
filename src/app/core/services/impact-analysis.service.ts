@@ -55,6 +55,27 @@ export class ImpactAnalysisService {
     return this.http.get<any>(`${this.apiUrl}/impact/${id}`);
   }
 
+getTestCasesAnalysis(id: number): Observable<any> {
+    if (this.environmentMode.getDemoMode()) {
+      // Return first mock analysis for demo
+      return new Observable(observer => {
+        observer.next({
+          id,
+          analysisId: id,
+          riskScore: 60,
+          riskLevel: 'HIGH',
+          cascadeDepth: 3,
+          affectedTestCase: [
+            { id: 2, testCaseName: 'Update User Profile', riskScore: 60, cascadeDepth: 2 }
+          ]
+        });
+        observer.complete();
+      });
+    }
+
+    return this.http.get<any>(`${this.apiUrl}/impact/${id}`);
+  }
+
   getAllAnalyses(): Observable<any[]> {
     if (this.environmentMode.getDemoMode()) {
       console.log('🎬 DEMO MODE: Returning mock analyses');

@@ -12,6 +12,7 @@ import { ImpactAnalysisService } from '../../../core/services/impact-analysis.se
 })
 export class ResultsComponent implements OnInit {
   analysis = signal<any>(null);
+  analysisTestCase = signal<any>(null);
   loading = signal<boolean>(true);
   error = signal<string>('');
 
@@ -25,6 +26,7 @@ export class ResultsComponent implements OnInit {
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
       this.loadAnalysis(parseInt(id));
+      this.loadTestCasesAnalysis(parseInt(id));
     }
   }
 
@@ -40,6 +42,23 @@ export class ResultsComponent implements OnInit {
       }
     });
   }
+
+    loadTestCasesAnalysis(id: number): void {
+    this.impactAnalysisService.getTestCasesAnalysis(id).subscribe({
+      next: (result) => {
+        console.log('Test Cases Analysis Result:', result);
+        this.analysisTestCase.set(result);
+        console.log('Test Cases Analysis Result:', this.analysisTestCase());
+
+        this.loading.set(false);
+      },
+      error: () => {
+        this.error.set('Failed to load analysis results');
+        this.loading.set(false);
+      }
+    });
+  }
+
 
   goBack(): void {
     this.router.navigate(['/impact-analysis']);

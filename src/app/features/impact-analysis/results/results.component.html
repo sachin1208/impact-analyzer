@@ -53,6 +53,35 @@
       </table>
     </div>
 
+    <div class="affected-modules">
+      <h2>Affected Test Cases ({{ analysisTestCase().affectedTestCase?.length }})</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Test Name</th>
+            <th>Risk Score</th>
+            <th>Cascade Depth</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let module of analysisTestCase().affectedTestCase">
+            <td>{{ module.testCaseName }}</td>
+            <td>
+              <span class="risk-badge" [style.backgroundColor]="getRiskColor(
+                module.riskScore >= 80 ? 'CRITICAL' :
+                module.riskScore >= 60 ? 'HIGH' :
+                module.riskScore >= 40 ? 'MEDIUM' : 'LOW'
+              )">
+                {{ module.riskScore | number: '1.0-0' }}%
+              </span>
+            </td>
+            <td>{{ module.cascadeDepth }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+
     <div class="recommendations">
       <h2>Recommendations</h2>
       <ul>
