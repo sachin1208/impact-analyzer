@@ -1,0 +1,9 @@
+com\example\impact\ImpactAnalyzerApplication.class
+com\example\impact\model\ImpactResponse$AffectedTestCase.class
+com\example\impact\controller\ImpactController.class
+com\example\impact\service\ImpactService.class
+com\example\impact\service\LlmClient.class
+com\example\impact\model\ImpactResponse$Recommendations.class
+com\example\impact\model\ImpactResponse$AffectedModule.class
+com\example\impact\model\ImpactResponse.class
+com\example\impact\model\ImpactRequest.class
